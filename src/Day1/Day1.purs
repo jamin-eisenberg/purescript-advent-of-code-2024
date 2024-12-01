@@ -25,9 +25,9 @@ calc :: (List (Tuple Int Int)) -> Int
 calc rows =
   let
     Tuple l1 l2 = unzip rows
-    absDiff n1 n2 = abs (n1 - n2)
+    occurrenceCount x = filter (_ == x) >>> length
   in
-    zipWith absDiff (sort l1) (sort l2)
+    map (\x -> x * occurrenceCount x l2) l1
       # sum
 
 parser ∷ Parser String (List (Tuple Int Int))
