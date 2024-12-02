@@ -4,7 +4,8 @@ import Prelude
 
 import Data.Either (Either(..))
 import Data.Function (on)
-import Data.List (List(..), all, drop, filter, foldr, length, sort, sortBy, take, (:))
+import Data.FunctorWithIndex (mapWithIndex)
+import Data.List (List(..), all, any, drop, filter, foldr, length, sort, sortBy, take, (:))
 import Data.List.NonEmpty (fromList)
 import Data.List.Partial (tail)
 import Data.List.Types (NonEmptyList)
@@ -27,8 +28,15 @@ main = run 2 Nothing parser (Right <<< calc)
 
 -- calc :: List (List Int) -> Int
 calc rows =
-  filter safe rows
+  filter (\row -> any safe $ variationsOn row) rows
     # length
+
+variationsOn :: forall a. List a -> List (List a)
+variationsOn xs =
+  let
+    removeAt idx = take idx <> drop (idx + 1)
+  in
+    mapWithIndex (\i _ -> removeAt i xs) xs
 
 slidingWindow :: forall a. Int -> List a -> List (NonEmptyList a)
 slidingWindow windowSize xs =
@@ -47,7 +55,8 @@ safe =
         ( \windows -> foldr1 (-) windows
             # abs
             # between 1 3
-        ) $ slidingWindow 2 xs
+        )
+        $ slidingWindow 2 xs
   in
     (increasing || decreasing) && sufficientlyGradual
 
