@@ -39,7 +39,7 @@ data Term = Do | Don't | Mul Int Int
 
 parser :: Parser String (List Term)
 parser = do
-  muls <- many $ try $ anyTill termParser -- (anyChar `manyTill_` mulParser)
+  muls <- many $ try $ anyTill termParser
   pure (muls <#> snd)
 
 termParser = choice [ mulParser, string "do()" $> Do, string "don't()" $> Don't ]
