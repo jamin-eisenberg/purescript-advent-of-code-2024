@@ -25,17 +25,16 @@ type Point = { x :: Int, y :: Int }
 calc :: Array (Array Char) -> Int
 calc grid =
   let
-    xsCoords =
+    coords =
       mapWithIndex
         ( \y row -> mapWithIndex
-            (\x element -> if element == 'M' then Just { x, y } else Nothing)
+            (\x _ -> { x, y })
             row
         )
         grid
-        <#> catMaybes
         # concat
 
-    possibleXmass = xsCoords <#> directionalLines # concat
+    possibleXmass = coords <#> directionalLines # concat
 
     presentMasCoords = filter (isLineXmas grid) possibleXmass
 
