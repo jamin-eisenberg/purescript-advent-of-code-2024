@@ -6,13 +6,14 @@ import Data.Either (Either(..))
 import Data.Either as Either
 import Data.Foldable (all, elem, sum)
 import Data.Function (on)
-import Data.List (List(..), catMaybes, filter, findIndex, groupBy, length, sort, (!!))
+import Data.FunctorWithIndex (mapWithIndex)
+import Data.List (List(..), catMaybes, filter, findIndex, groupBy, length, sort, sortBy, zip, (!!))
 import Data.List.NonEmpty (NonEmptyList)
 import Data.List.NonEmpty as NE
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Tuple (Tuple(..), fst, snd)
+import Data.Tuple (Tuple(..), curry, fst, snd)
 import Debug (spyWith)
 import Effect (Effect)
 import Main (run)
@@ -28,9 +29,17 @@ calc { constraints, updates } =
   let
     constraintsMap = compileConstraints constraints
   in
-    filter (obeysConstraints constraintsMap) updates
+    filter (not $ obeysConstraints constraintsMap) updates
+      <#> reorder constraintsMap
       <#> getMiddle
       # sum
+
+reorder :: Map Int (NonEmptyList Int) -> List Int -> List Int
+reorder constraintsMap update =
+  let
+    constraintListLength = elementConstraints constraintsMap update >>> length
+  in
+    sortBy (compare `on` constraintListLength) update
 
 obeysConstraints :: Map Int (NonEmptyList Int) -> List Int -> Boolean
 obeysConstraints constraintsMap update =
