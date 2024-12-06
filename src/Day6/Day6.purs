@@ -5,14 +5,17 @@ import Prelude
 import Control.Monad.ST (while)
 import Control.Monad.ST as ST
 import Control.Monad.ST.Internal (modify, new, read, write)
-import Data.Array (catMaybes, concat, elem, foldl, fromFoldable, head, length, mapWithIndex, partition)
+import Data.Array (catMaybes, concat, elem, foldl, fromFoldable, head, length, mapWithIndex, notElem, partition)
 import Data.Either (note)
+import Data.Function (on)
 import Data.Generic.Rep (class Generic)
 import Data.HeytingAlgebra (ff)
-import Data.List (List, nub, singleton, (:))
+import Data.List (List(..), difference, intersect, nub, nubByEq, null, singleton, (:))
 import Data.List as List
 import Data.Maybe (Maybe(..))
 import Data.Show.Generic (genericShow)
+import Data.Tuple (Tuple(..), fst)
+import Data.Unfoldable1 (iterateN)
 import Debug (spyWith)
 import Effect (Effect)
 import Main (run)
@@ -26,7 +29,6 @@ main = run 6 Nothing parser (note "no start found" <<< calc)
 
 calc grid =
   let
-    _ = spyWith "" show grid
     nonEmptyCoords =
       mapWithIndex
         ( \y row -> mapWithIndex
@@ -49,24 +51,36 @@ calc grid =
           obstacleCoords
           width
           (length grid)
-      visited # nub # List.length # (_ - 1) # pure
+      visited # pure
 
 type Pos = { x :: Int, y :: Int }
 
-visitedPositions ∷ { startDir ∷ Direction, startPos ∷ Pos } → Array Pos → Int → Int → List Pos
+visitedPositions ∷ { startDir ∷ Direction, startPos ∷ Pos } → Array Pos → Int → Int → Int
 visitedPositions { startPos, startDir } obstacleCoords width height = ST.run do
   pos <- new startPos
   dir <- new startDir
-  visited <- new (singleton startPos)
+  visited <- new Nil
+  potentialLoopCount <- new 0
   while (read pos <#> isInBounds width height)
     do
       currentPos <- read pos
       currentDir <- read dir
+      _ <- modify ((Tuple currentPos currentDir : _)) visited
+      currentVisited <- read visited
+      when (pathWouldSelfCollide currentPos (rotateRight currentDir) currentVisited width height) do
+        void $ modify (_ + 1) potentialLoopCount
       let { newPos, newDir } = move currentPos currentDir obstacleCoords
+      let _ = spyWith "" show $ List.length currentVisited
       _ <- write newPos pos
-      _ <- write newDir dir
-      modify (newPos : _) visited
-  read visited
+      write newDir dir
+  read potentialLoopCount
+
+pathWouldSelfCollide pos dir visited width height =
+  let
+    possTillOutOfBounds = iterateN (max width height) (_ + directionVec dir) pos
+      <#> (\p -> Tuple p dir)
+  in
+    not null $ intersect possTillOutOfBounds visited
 
 move pos dir obstacleCoords =
   let
@@ -82,6 +96,11 @@ move pos dir obstacleCoords =
 isInBounds width height { x, y } = between 0 (width - 1) x && between 0 (height - 1) y
 
 data Direction = Up | Right | Down | Left
+
+derive instance Eq Direction
+derive instance Generic Direction _
+instance Show Direction where
+  show = genericShow
 
 rotateRight = case _ of
   Up -> Right
