@@ -9,10 +9,11 @@ import Data.Array (catMaybes, concat, elem, foldl, fromFoldable, head, length, m
 import Data.Either (note)
 import Data.Generic.Rep (class Generic)
 import Data.HeytingAlgebra (ff)
-import Data.List (List, nub, singleton, (:))
+import Data.List (List(..), filter, nub, singleton, (:))
 import Data.List as List
 import Data.Maybe (Maybe(..))
 import Data.Show.Generic (genericShow)
+import Data.Tuple (Tuple(..))
 import Debug (spyWith)
 import Effect (Effect)
 import Main (run)
@@ -43,30 +44,49 @@ calc grid =
     do
       startCoords <- head startAllCoords
       width <- head grid <#> length
+      let height = length grid
       let
-        visited = visitedPositions
-          { startPos: startCoords, startDir: Up }
-          obstacleCoords
-          width
-          (length grid)
-      visited # nub # List.length # (_ - 1) # pure
+        visited =
+          visitedPositions
+            { startPos: startCoords, startDir: Up }
+            obstacleCoords
+            width
+            height
+            Nil
+            # _.visited
+      pure $ visited
+        <#> (\(Tuple pos dir) -> visitedPositions { startDir: rotateRight dir, startPos: pos } obstacleCoords width height visited)
+        # List.filter _.looped
+        <#> spyWith "" show
+        # List.length
 
 type Pos = { x :: Int, y :: Int }
 
-visitedPositions ∷ { startDir ∷ Direction, startPos ∷ Pos } → Array Pos → Int → Int → List Pos
-visitedPositions { startPos, startDir } obstacleCoords width height = ST.run do
+visitedPositions ∷ { startDir ∷ Direction, startPos ∷ Pos } → Array Pos → Int → Int -> List (Tuple Pos Direction) → { visited :: List (Tuple Pos Direction), looped :: Boolean }
+visitedPositions { startPos, startDir } obstacleCoords width height startVisited = ST.run do
   pos <- new startPos
   dir <- new startDir
-  visited <- new (singleton startPos)
-  while (read pos <#> isInBounds width height)
+  visited <- new startVisited
+  looped <- new false
+  while
+    ( do
+        currentPos <- read pos
+        currentLooped <- read looped
+        pure $ isInBounds width height currentPos && not currentLooped
+    )
     do
       currentPos <- read pos
       currentDir <- read dir
+      currentVisited <- read visited
+      when (Tuple currentPos currentDir `List.elem` currentVisited) do
+        void $ write true looped
+      _ <- modify (Tuple currentPos currentDir : _) visited
       let { newPos, newDir } = move currentPos currentDir obstacleCoords
       _ <- write newPos pos
-      _ <- write newDir dir
-      modify (newPos : _) visited
-  read visited
+      write newDir dir
+  currentVisited <- read visited
+  currentLooped <- read looped
+  pure { visited: currentVisited, looped: currentLooped }
 
 move pos dir obstacleCoords =
   let
@@ -82,6 +102,11 @@ move pos dir obstacleCoords =
 isInBounds width height { x, y } = between 0 (width - 1) x && between 0 (height - 1) y
 
 data Direction = Up | Right | Down | Left
+
+derive instance Eq Direction
+derive instance Generic Direction _
+instance Show Direction where
+  show = genericShow
 
 rotateRight = case _ of
   Up -> Right
