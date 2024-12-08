@@ -7,9 +7,12 @@ import Control.Monad.ST as ST
 import Control.Monad.ST.Internal (modify, new, read, write)
 import Data.Array (catMaybes, concat, elem, foldl, fromFoldable, head, length, mapWithIndex, partition)
 import Data.Either (note)
+import Data.FoldableWithIndex (class FoldableWithIndex)
+import Data.FunctorWithIndex (class FunctorWithIndex)
+import Data.FunctorWithIndex as FunctorWithIndex
 import Data.Generic.Rep (class Generic)
 import Data.HeytingAlgebra (ff)
-import Data.List (List(..), filter, nub, singleton, (:))
+import Data.List (List(..), filter, nub, singleton, take, (:))
 import Data.List as List
 import Data.Maybe (Maybe(..))
 import Data.Show.Generic (genericShow)
@@ -54,11 +57,15 @@ calc grid =
             height
             Nil
             # _.visited
-      pure $ visited
-        <#> (\(Tuple pos dir) -> visitedPositions { startDir: rotateRight dir, startPos: pos } obstacleCoords width height visited)
-        # List.filter _.looped
-        <#> spyWith "" show
-        # List.length
+      pure $
+        visited
+          `flip FunctorWithIndex.mapWithIndex`
+            ( \i (Tuple pos dir) ->
+                visitedPositions { startDir: rotateRight dir, startPos: pos } obstacleCoords width height (take i visited)
+            )
+          # List.filter _.looped
+          <#> spyWith "" show
+          # List.length
 
 type Pos = { x :: Int, y :: Int }
 
