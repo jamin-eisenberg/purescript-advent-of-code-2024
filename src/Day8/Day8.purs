@@ -3,7 +3,7 @@ module Day8 where
 import Prelude
 
 import Control.Alternative (guard)
-import Data.Array (catMaybes, concat, filter, fromFoldable, groupBy, length, mapWithIndex, notElem, nub, sortBy, sortWith)
+import Data.Array (catMaybes, concat, filter, fromFoldable, groupBy, length, mapWithIndex, notElem, nub, range, sortBy, sortWith)
 import Data.Array.NonEmpty as NEA
 import Data.Array.Partial (head)
 import Data.Either (Either(..))
@@ -63,17 +63,21 @@ validAntinodesForGroup width height poss =
         p1 <- poss
         p2 <- poss
         guard $ p1 /= p2
-        pure $ antinodes p1 p2
+        pure $ antinodes p1 p2 width height
     )
 
 inBounds width height { x, y } = between 0 (width - 1) x && between 0 (height - 1) y
 
-antinodes :: Pos -> Pos -> Array Pos
-antinodes p1 p2 =
+antinodes :: Pos -> Pos -> Int -> Int -> Array Pos
+antinodes p1 p2 width height =
   let
     diffVec = abs (p1 - p2)
   in
-    [ p1 - diffVec, p1 + diffVec, p2 - diffVec, p2 + diffVec ]
+    ((\factor -> p1 + scale diffVec factor) <$> range (-height) height)
+      <> ((\factor -> p2 + scale diffVec factor) <$> range (-height) height)
+
+scale :: Pos -> Int -> Pos
+scale { x, y } c = { x: c * x, y: c * y }
 
 parser :: Parser String (Array (Array Char))
 parser = (many $ satisfy (notEq '\n')) `sepBy` char '\n' <#> fromFoldable
