@@ -4,6 +4,7 @@ package:
     - console
     - debug
     - effect
+    - js-bigints
     - node-fs
     - node-process
     - optparse
