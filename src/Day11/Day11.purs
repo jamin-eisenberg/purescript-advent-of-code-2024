@@ -21,11 +21,11 @@ import Parsing.String.Basic (intDecimal, number, space)
 import Partial (crashWith)
 import Partial.Unsafe (unsafePartial)
 
-main ∷ Effect Unit
-main = run 11 Nothing parser (note "empty stones" <<< calc)
+-- main ∷ Effect Unit
+-- main = run 11 Nothing parser (note "empty stones" <<< calc)
 
 calc stones =
-  iterateN 76 (concatMap $ memoize blink) stones
+  iterateN 76 (concatMap $ blink) stones
     # last
     <#> length
 
