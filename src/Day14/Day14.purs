@@ -2,11 +2,16 @@ module Day14 where
 
 import Prelude
 
+import Data.Array (range)
 import Data.Either (Either(..))
-import Data.Foldable (product)
+import Data.Foldable (elem, product)
 import Data.Function (applyN)
 import Data.List (List, filter, length)
 import Data.Maybe (Maybe(..))
+import Data.Set (Set)
+import Data.Set as Set
+import Data.String (joinWith)
+import Data.String.CodeUnits (fromCharArray)
 import Data.Tuple (Tuple(..))
 import Debug (spyWith)
 import Effect (Effect)
@@ -22,14 +27,38 @@ main = run 14 Nothing parser (Right <<< calc)
 width = 101
 height = 103
 
-calc ∷ List Robot → Int
+-- width = 11
+-- height = 7
+
+calc ∷ List Robot → MyString
 calc robots =
   let
-    finalRobots = robots <#> applyN move 100 <#> _.pos
-    quad (Tuple compX compY) = finalRobots # filter (\{ x, y } -> (compX x (width / 2)) && compY y (height / 2))
-    quadrantsComps = [ Tuple (<) (<), Tuple (<) (>), Tuple (>) (<), Tuple (>) (>) ]
+    { log } = { robots, i: 0, log: "" } # applyN moveAndShowAll 10000
   in
-    quadrantsComps <#> quad <#> (spyWith "" show) <#> length # product
+    MyString log
+
+newtype MyString = MyString String
+
+instance Show MyString where
+  show (MyString s) = s
+
+moveAndShowAll ∷ { robots :: List Robot, i :: Int, log :: String } -> { robots :: List Robot, i :: Int, log :: String }
+moveAndShowAll { robots, i, log } =
+  let
+    moved = robots <#> move
+  in
+    { robots: moved, i: i + 1, log: log <> ("\n\n" <> show i <> "\n") <> (((_ <#> _.pos) >>> Set.fromFoldable >>> showGrid) moved) }
+
+showGrid :: Set { x :: Int, y :: Int } -> String
+showGrid poss =
+  let
+    charGrid = range 0 (height - 1) <#>
+      \y -> range 0 (width - 1) <#>
+        \x -> if { x, y } `Set.member` poss then '0' else '.'
+  in
+    charGrid
+      <#> fromCharArray
+      # joinWith "\n"
 
 type Robot = { pos :: { x :: Int, y :: Int }, vel :: { x :: Int, y :: Int } }
 
