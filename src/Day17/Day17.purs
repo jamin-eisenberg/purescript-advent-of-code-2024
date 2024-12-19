@@ -5,7 +5,7 @@ import Prelude
 import Control.Monad.ST (while)
 import Control.Monad.ST as ST
 import Control.Monad.ST.Internal (modify, new, read, write)
-import Data.Array (foldl, fromFoldable, index, length)
+import Data.Array (findIndex, foldl, fromFoldable, index, length, range)
 import Data.Array.ST (STArray, freeze)
 import Data.Array.ST as STArray
 import Data.Either (Either(..))
@@ -28,14 +28,15 @@ import Partial.Unsafe (unsafePartial)
 main ∷ Effect Unit
 main = run 17 Nothing parser (Right <<< calc)
 
-calc ∷ _ → String
-calc { initA, initB, initC, instructions } =
+calc { initB, initC, instructions } =
   let
     _ = spyWith "" show instructions
+    rawInstructions = [ 2, 4, 1, 2, 7, 5, 1, 3, 4, 3, 5, 5, 0, 3, 3, 0 ]
   in
-    execute { initA, initB, initC } instructions
-      <#> show
-      # joinWith ","
+    findIndex
+      ( \initA -> rawInstructions ==
+          spyWith "" show (execute { initA, initB, initC } instructions)
+      ) $ range 0 100000100
 
 execute :: { initA :: Int, initB :: Int, initC :: Int } -> Array Instruction -> Array Int
 execute { initA, initB, initC } instructions =
@@ -103,3 +104,17 @@ instructionParser = do
   opCode <- liftMaybe (\_ -> "expected an op code 0-7") $ toOpCode opCodeRaw
   pure $ Instruction opCode operand
 
+-- Decode.field "input" Decode.string
+--  |> Decode \input -> Decode.field "time" Iso.decoder 
+--  |> Decode \time -> ...
+--- |> Decode \day -> Bullet input time ... day
+
+-- Decode.map8 Bullet "time" "day"
+
+-- do laundry: 1
+-- do homework: 
+-- go to work: 
+-- philosophy: 0
+
+-- 0: think
+-- 1: household

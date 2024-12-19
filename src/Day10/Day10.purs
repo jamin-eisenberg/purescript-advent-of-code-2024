@@ -48,7 +48,6 @@ calc rawGrid =
   in
     starts
       <#> flip fullyTraversableCount neighborGraph
-      <#> nub
       <#> length
       # sum
 
